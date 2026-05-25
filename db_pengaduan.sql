@@ -1,3 +1,4 @@
+CREATE DATABASE IF NOT EXISTS db_pengaduan;
 USE db_pengaduan;
 
 CREATE TABLE users (
