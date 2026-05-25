@@ -1,4 +1,7 @@
-CREATE TABLE pengaduans (
+CREATE DATABASE IF NOT EXISTS db_pengaduan;
+USE db_pengaduan;
+
+CREATE TABLE pengaduan (
     id BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT(20) UNSIGNED NOT NULL,
     foto_bukti VARCHAR(255) DEFAULT NULL,
