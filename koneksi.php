@@ -1,8 +1,9 @@
 <?php
 $host     = "localhost";
-$user     = "root";
-$password = "";    
-$db       = "db_aplikasi";
+$user     = "kelompok2"; // Default XAMPP/Laragon
+$password = "12345";     // Kosongkan jika default
+$db       = "db_sipelda"; // Ses_uaikan dengan nama database kamu
+
 
 $koneksi = mysqli_connect($host, $user, $password, $db);
 
