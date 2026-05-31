@@ -2,266 +2,659 @@
 session_start();
 require 'koneksi.php';
 
-// 1. Proteksi Halaman Khusus Masyarakat
 if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login' || $_SESSION['role'] !== 'masyarakat') {
     header("Location: login.php");
     exit;
 }
 
-// 2. Logika Pemrosesan Form Pengaduan
-if (isset($_POST['kirim_pengaduan'])) {
-    $id_user     = $_SESSION['id_user'];
-    $lokasi      = mysqli_real_escape_string($koneksi, $_POST['lokasi']);
-    $kategori    = mysqli_real_escape_string($koneksi, $_POST['kategori']);
-    $isi_laporan = mysqli_real_escape_string($koneksi, $_POST['isi_laporan']);
-    $is_anonim   = isset($_POST['anonim']) ? true : false;
+$foto_profil_nav = "";
+$id_user_nav = $_SESSION['id_user'];
+$q_nav = mysqli_query($koneksi, "SELECT foto_profil FROM users WHERE id_user = '$id_user_nav'");
+if ($q_nav && mysqli_num_rows($q_nav) > 0) {
+    $foto_profil_nav = mysqli_fetch_assoc($q_nav)['foto_profil'];
+}
 
-    // Trik Database: Menggabungkan Kategori dan Lokasi menjadi Judul Laporan
+if (isset($_POST['kirim_pengaduan'])) {
+    $id_user       = $_SESSION['id_user'];
+    $kategori      = mysqli_real_escape_string($koneksi, $_POST['kategori']);
+    $lokasi        = mysqli_real_escape_string($koneksi, $_POST['lokasi']);
+    $deskripsi     = mysqli_real_escape_string($koneksi, $_POST['isi_laporan']);
+    $lat           = mysqli_real_escape_string($koneksi, $_POST['latitude']);
+    $lng           = mysqli_real_escape_string($koneksi, $_POST['longitude']);
+    $is_anonim     = isset($_POST['anonim']) ? true : false;
+    $sifat_laporan = $_POST['privasi'];
+
     $judul_laporan = $kategori . " - " . $lokasi;
     if ($is_anonim) {
-        $judul_laporan .= " [ANONIM]"; // Menambahkan tag anonim di judul agar admin tahu
+        $judul_laporan .= " [ANONIM]";
+    }
+    if ($sifat_laporan === 'privat') {
+        $judul_laporan .= " [PRIVAT]";
     }
 
-    $nama_foto = ""; // Default jika tidak ada foto
-    $upload_sukses = true;
+    $link_maps = "http://maps.google.com/?q=" . $lat . "," . $lng;
+    $isi_laporan_lengkap = $deskripsi . "\n\n Titik Koordinat Peta:\n" . $link_maps;
 
-    // 3. Logika Upload Foto (Jika ada file yang diunggah)
-    if (isset($_FILES['foto']['name']) && $_FILES['foto']['name'] != '') {
-        $file_name = $_FILES['foto']['name'];
-        $file_size = $_FILES['foto']['size'];
-        $file_tmp  = $_FILES['foto']['tmp_name'];
-        
-        $ext_allow = array('jpg', 'jpeg', 'png');
-        $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+    $nama_foto = "";
 
-        // Validasi Ekstensi dan Ukuran (Maks 2MB)
-        if (in_array($file_ext, $ext_allow)) {
-            if ($file_size <= 2097152) { // 2MB dalam bytes
-                // Membuat nama file unik dengan timestamp agar tidak tertimpa
-                $nama_foto = time() . '_' . $file_name; 
-                $path = 'asets/uploads/' . $nama_foto;
-                
-                // Pindahkan file dari memori sementara ke folder proyek
-                move_uploaded_file($file_tmp, $path);
-            } else {
-                $error = "Ukuran foto terlalu besar. Maksimal 2MB!";
-                $upload_sukses = false;
-            }
+    // Validasi PHP (Server-side) tetap dipertahankan untuk keamanan ganda
+    if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
+        $ext_diizinkan = array('png', 'jpg', 'jpeg');
+        $nama_file     = $_FILES['foto']['name'];
+        $x             = explode('.', $nama_file);
+        $ekstensi      = strtolower(end($x));
+        $ukuran        = $_FILES['foto']['size'];
+        $file_tmp      = $_FILES['foto']['tmp_name'];
+
+        if (in_array($ekstensi, $ext_diizinkan) && $ukuran < 2048000) { 
+            $nama_foto = time() . '_img_' . preg_replace("/[^a-zA-Z0-9.]/", "", $nama_file);
+            move_uploaded_file($file_tmp, 'uploads/' . $nama_foto);
         } else {
-            $error = "Format foto tidak valid. Hanya JPG, JPEG, dan PNG yang diperbolehkan!";
-            $upload_sukses = false;
+            echo "<script>alert('Gagal! Format foto tidak valid atau ukuran lebih dari 2MB.'); window.history.back();</script>";
+            exit; // Menghentikan proses eksekusi jika file tidak valid
         }
     }
 
-    // 4. Simpan ke Database jika upload lolos validasi
-    if ($upload_sukses && !isset($error)) {
-        $query = "INSERT INTO pengaduan (id_user, judul_laporan, isi_laporan, foto) 
-                    VALUES ('$id_user', '$judul_laporan', '$isi_laporan', '$nama_foto')";
-        
-        if (mysqli_query($koneksi, $query)) {
-            echo "<script>
-                    alert('Laporan pengaduan Anda berhasil dikirim!');
-                    window.location.href = 'historipengaduan.php';
-                    </script>";
-            exit;
-        } else {
-            $error = "Gagal menyimpan ke database: " . mysqli_error($koneksi);
-        }
+    $query = "INSERT INTO pengaduan (id_user, judul_laporan, isi_laporan, foto, status) 
+              VALUES ('$id_user', '$judul_laporan', '$isi_laporan_lengkap', '$nama_foto', 'menunggu')";
+
+    if (mysqli_query($koneksi, $query)) {
+        echo "<script>alert('Laporan berhasil dikirim!'); window.location.href='historipengaduan.php';</script>";
+    } else {
+        echo "<script>alert('Gagal mengirim laporan!');</script>";
     }
 }
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buat Pengaduan - SIPELDA</title>
+    <title>Buat Laporan Baru - SIPELDA</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fb;
+            margin: 0;
+            color: #333;
+        }
 
-        /* Top Navbar */
-        .navbar { background-color: #0c2d6b; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; color: white; }
-        .navbar-brand { font-size: 20px; font-weight: bold; }
-        .navbar-links a { color: #cbd5e1; text-decoration: none; margin: 0 15px; font-size: 14px; transition: 0.2s; }
-        .navbar-links a:hover, .navbar-links a.active { color: white; font-weight: 600; }
-        .navbar-user { display: flex; align-items: center; gap: 15px; }
-        .navbar-user span { font-size: 14px; }
-        .avatar { width: 35px; height: 35px; background-color: #cbd5e1; border-radius: 50%; }
-        .btn-logout { background-color: #dc2626; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 12px; font-weight: bold; }
+        .navbar {
+            background-color: #002855;
+            color: white;
+            padding: 25px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-        /* Main Container */
-        .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
-        .form-card { background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .form-card h2 { font-size: 24px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
+        .navbar .logo {
+            font-size: 26px;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+        }
 
-        /* Form Elements */
-        .form-group { margin-bottom: 25px; }
-        .form-group label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #334155; }
-        .form-group label span { color: #ef4444; } /* Red asterisk */
+        .nav-center {
+            display: flex;
+            gap: 40px;
+        }
 
-        /* Upload Area */
-        .upload-area { border: 2px dashed #cbd5e1; background-color: #f8fafc; border-radius: 8px; padding: 40px 20px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; }
-        .upload-area:hover { border-color: #94a3b8; background-color: #f1f5f9; }
-        .upload-icon { font-size: 30px; color: #0c2d6b; background-color: #e2e8f0; width: 60px; height: 60px; line-height: 60px; border-radius: 12px; margin: 0 auto 15px; }
-        .upload-text { font-size: 14px; color: #64748b; }
-        .upload-text small { display: block; margin-top: 5px; color: #94a3b8; }
-        .upload-area input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .nav-center a {
+            color: #a9b9cc;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: 0.3s;
+        }
 
-        /* Inputs & Selects */
-        .input-group { position: relative; }
-        .input-group i { position: absolute; left: 15px; top: 14px; color: #94a3b8; }
-        .form-control { width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; color: #1e293b; outline: none; transition: 0.2s; }
-        .input-group .form-control { padding-left: 40px; }
-        .form-control:focus { border-color: #0c2d6b; box-shadow: 0 0 0 3px rgba(12, 45, 107, 0.1); }
-        textarea.form-control { resize: vertical; min-height: 120px; }
+        .nav-center a:hover {
+            color: white;
+        }
 
-        /* Checkbox Anonim */
-        .checkbox-area { background-color: #f1f5f9; padding: 15px; border-radius: 6px; display: flex; align-items: center; gap: 10px; border: 1px solid #e2e8f0; }
-        .checkbox-area input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
-        .checkbox-area label { margin-bottom: 0; font-weight: normal; font-size: 14px; cursor: pointer; }
+        .user-profile-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 20px;
+            border-radius: 30px;
+            text-decoration: none;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
 
-        /* Submit Button */
-        .btn-submit { width: 100%; background-color: #0c2d6b; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; display: flex; justify-content: center; align-items: center; gap: 10px; transition: 0.2s; }
-        .btn-submit:hover { background-color: #1e4088; }
+        .nav-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+        }
 
-        /* Alert */
-        .alert { background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 15px; border-radius: 6px; margin-bottom: 25px; font-size: 14px; }
+        .container {
+            max-width: 750px;
+            margin: 40px auto;
+            padding: 40px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
 
-        /* Footer Helpers */
-        .helpers { display: flex; justify-content: center; gap: 15px; margin-top: 30px; }
-        .btn-outline { background-color: transparent; border: 1px solid #cbd5e1; color: #0c2d6b; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; background-color: white; }
-        .btn-gray { background-color: #e2e8f0; border: 1px solid #e2e8f0; color: #475569; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; }
+        .header-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header-title h2 {
+            color: #002855;
+            margin: 0 0 10px;
+            font-size: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .form-group label.main-label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #dcdcdc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .form-control[readonly] {
+            background-color: #f1f5f9;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        textarea.form-control {
+            height: 120px;
+            resize: vertical;
+        }
+
+        .file-upload-wrapper {
+            border: 2px dashed #002855;
+            padding: 40px 20px;
+            text-align: center;
+            border-radius: 8px;
+            background: #f8fbff;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .file-upload-wrapper:hover {
+            background: #eef5ff;
+        }
+
+        .preview-area {
+            display: none;
+            position: relative;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .preview-area img {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 6px;
+            display: block;
+        }
+
+        .btn-hapus-preview {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Styling Pilihan Lokasi (Radio) */
+        .pilihan-lokasi {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .radio-lokasi {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #334155;
+        }
+
+        .radio-lokasi input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #002855;
+        }
+
+        #map {
+            height: 300px;
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 1px solid #dcdcdc;
+            z-index: 1;
+        }
+
+        .map-status {
+            font-size: 13px;
+            color: #198754;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 48px; 
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #dcdcdc;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .search-results div {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+
+        .search-results div:hover {
+            background: #f4f7fb;
+            color: #002855;
+        }
+
+        .search-results div:last-child {
+            border-bottom: none;
+        }
+
+        .checkbox-area {
+            background: #fef3c7;
+            padding: 15px 20px;
+            border-radius: 6px;
+            border: 1px solid #fde68a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: #002855;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        
+        .btn-submit:hover {
+            background: #001a38;
+        }
     </style>
 </head>
+
 <body>
 
-<div class="navbar">
-        <div class="navbar-brand">SIPELDA</div>
-        <div class="navbar-links">
-            <a href="masyarakat.php">Beranda</a>
+    <nav class="navbar">
+        <a href="index.php" class="logo">SIPELDA</a>
+        <div class="nav-center">
+            <a href="index.php">Beranda</a>
             <a href="historipengaduan.php">Riwayat</a>
         </div>
-        <div class="navbar-user">
-            <span>Halo, <?= $_SESSION['username']; ?></span>
-            <div class="avatar"></div>
-            <a href="logout.php" class="btn-logout">Keluar</a>
+        <div>
+            <a href="profil.php" class="user-profile-btn">
+                <span>Halo, <?= htmlspecialchars($_SESSION['username'] ?? 'User'); ?></span>
+                <?php if (!empty($foto_profil_nav) && file_exists('uploads/' . $foto_profil_nav)): ?>
+                    <img src="uploads/<?= $foto_profil_nav ?>" class="nav-avatar">
+                <?php else: ?>
+                    <i class="fa-solid fa-circle-user" style="font-size: 24px; color: #cbd5e1;"></i>
+                <?php endif; ?>
+            </a>
         </div>
-    </div>
+    </nav>
 
     <div class="container">
-        <div class="form-card">
-            <h2>Formulir Pengaduan Baru</h2>
+        <div class="header-title">
+            <h2>Buat Laporan Baru</h2>
+        </div>
 
-            <?php if (isset($error)) : ?>
-                <div class="alert"><i class="fa-solid fa-triangle-exclamation"></i> <?= $error; ?></div>
-            <?php endif; ?>
+        <form action="" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label class="main-label">1. Unggah Foto Bukti Kejadian <span style="color:red;">*</span></label>
+                <div class="file-upload-wrapper" id="upload-wrapper" onclick="document.getElementById('input-foto').click()">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size:40px; color:#002855; display:block; margin-bottom:15px;"></i>
+                    <strong style="color:#002855; font-size: 16px;">Klik di sini untuk memilih foto</strong>
+                    <p style="margin: 5px 0 0; color: #64748b; font-size: 13px;">Format yang diizinkan: JPG, JPEG, PNG (Maks 2MB)</p>
+                    <input type="file" name="foto" id="input-foto" accept="image/png, image/jpeg, image/jpg" style="display: none;" required>
+                </div>
+                <div class="preview-area" id="preview-wrapper">
+                    <img id="preview-image" src="#" alt="Preview Gambar">
+                    <button type="button" class="btn-hapus-preview" id="btn-hapus-preview" title="Hapus Foto"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
 
-            <form action="" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label class="main-label">2. Kategori Masalah <span style="color:red;">*</span></label>
+                <select name="kategori" class="form-control" required>
+                    <option value="">-- Pilih Kategori Permasalahan --</option>
+                    <option value="Jalan Rusak & Infrastruktur">Jalan Rusak & Infrastruktur</option>
+                    <option value="Kebersihan & Sampah">Kebersihan & Sampah</option>
+                    <option value="Penerangan Jalan Umum (PJU)">Penerangan Jalan Umum (PJU)</option>
+                    <option value="Kesehatan & Lingkungan">Kesehatan & Lingkungan</option>
+                    <option value="Keamanan & Ketertiban">Keamanan & Ketertiban</option>
+                    <option value="Ketertiban Lalu Lintas & Parkir">Ketertiban Lalu Lintas & Parkir</option>
+                    <option value="Pelayanan Administrasi">Pelayanan Administrasi & Birokrasi</option>
+                    <option value="Bantuan Sosial (Bansos)">Bantuan Sosial (Bansos)</option>
+                    <option value="Kedaruratan & Bencana">Kedaruratan & Bencana (Banjir/Pohon Tumbang)</option>
+                    <option value="Fasilitas Umum">Fasilitas Umum</option>
+                    <option value="Lainnya">Lainnya</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="main-label">3. Lokasi Kejadian <span style="color:red;">*</span></label>
                 
-<div class="form-group">
-    <label>Unggah Foto Bukti <span>*</span></label>
-    <div class="upload-area">
-        <input type="file" name="foto" accept="image/jpeg, image/png, image/jpg" required id="file-input">
-        
-        <div id="preview-container" style="display: none; position: relative; display: inline-block; max-width: 100%; margin-bottom: 15px; z-index: 15;">            <img id="image-preview" src="#" alt="Pratinjau Foto" style="max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: cover; border: 2px solid #cbd5e1;">
-            <button type="button" id="btn-cancel" style="position: absolute; top: -10px; right: -10px; background-color: black; color: white; border: none; width: 25px; height: 25px; border-radius: 50%; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: 0.2s;">&times;</button>
-        </div>
-        
-        <div class="upload-icon" id="preview-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-        <div class="upload-text" id="file-name">
-            Ambil atau pilih foto kejadian terlebih dahulu.<small>Maksimal 2MB (JPG, JPEG, PNG)</small>
-        </div>
-    </div>
-</div>
-                <div class="form-group">
-                    <label>Lokasi Kejadian / Patokan <span>*</span></label>
-                    <div class="input-group">
-                        <i class="fa-solid fa-location-dot"></i>
-                        <input type="text" name="lokasi" class="form-control" placeholder="Contoh: Depan warung Bu Eem RT 02/RW 04, tiang listrik roboh" required>
-                    </div>
+                <div class="pilihan-lokasi">
+                    <label class="radio-lokasi">
+                        <input type="radio" name="mode_lokasi" value="gps" checked>
+                        <span><i class="fa-solid fa-location-crosshairs"></i> Gunakan Lokasi Saat Ini</span>
+                    </label>
+                    <label class="radio-lokasi">
+                        <input type="radio" name="mode_lokasi" value="manual">
+                        <span><i class="fa-solid fa-pen-to-square"></i> Cari Lokasi Manual</span>
+                    </label>
                 </div>
 
-                <div class="form-group">
-                    <label>Kategori Laporan <span>*</span></label>
-                    <select name="kategori" class="form-control" required>
-                        <option value="" disabled selected>Pilih kategori yang sesuai</option>
-                        <option value="Jalan & Infrastruktur">Jalan & Infrastruktur</option>
-                        <option value="Kebersihan & Sampah">Kebersihan & Sampah</option>
-                        <option value="Fasilitas Umum">Fasilitas Umum</option>
-                        <option value="Keamanan & Ketertiban">Keamanan & Ketertiban</option>
-                        <option value="Lainnya">Lainnya</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Detail Laporan / Deskripsi <span>*</span></label>
-                    <textarea name="isi_laporan" class="form-control" placeholder="Ceritakan detail kejadian secara jelas dan rinci..." required></textarea>
-                </div>
-
-                <div class="form-group">
-                    <div class="checkbox-area">
-                        <input type="checkbox" id="anonim" name="anonim" value="1">
-                        <label for="anonim">Sembunyikan nama saya di halaman publik (Anonim)</label>
-                    </div>
-                </div>
-
-                <button type="submit" name="kirim_pengaduan" class="btn-submit">
-                    <i class="fa-solid fa-paper-plane"></i> Kirim Pengaduan Sekarang
-                </button>
-            </form>
-        </div>
-
-        <div class="helpers">
-            <a href="#" class="btn-outline"><i class="fa-solid fa-book"></i> Lihat Tutorial Cara Melapor</a>
-            <a href="#" class="btn-gray"><i class="fa-solid fa-envelope"></i> Hubungi Kami via Email</a>
-        </div>
-    </div>
-
-<script>
-    const fileInput = document.getElementById('file-input');
-    const fileNameDisplay = document.getElementById('file-name');
-    const previewContainer = document.getElementById('preview-container');
-    const imagePreview = document.getElementById('image-preview');
-    const previewIcon = document.getElementById('preview-icon');
-    const btnCancel = document.getElementById('btn-cancel');
-
-    // 1. Logika ketika user MEMILIH FOTO
-    fileInput.addEventListener('change', function() {
-        const file = this.files[0];
-        
-        if (file) {
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                imagePreview.src = e.target.result;
-                previewContainer.style.display = 'inline-block'; // Munculkan wadah gambar & tombol silang
-                previewIcon.style.display = 'none';   
+                <span id="map-status" class="map-status"><i class="fa-solid fa-spinner fa-spin"></i> Mendeteksi lokasi GPS...</span>
                 
-                fileNameDisplay.innerHTML = `
-                    <span style="color: #28a745; font-weight: bold;"><i class="fa-solid fa-circle-check"></i> Foto berhasil dimuat:</span><br>
-                    <span style="color: #0c2d6b; font-size: 13px; font-weight: 600;">${file.name}</span>
-                `;
+                <div style="position: relative;">
+                    <input type="text" name="lokasi" id="input-lokasi" class="form-control" placeholder="Mencari alamat lokasi saat ini..." readonly required autocomplete="off">
+                    <div id="search-results" class="search-results"></div>
+                </div>
+
+                <div id="map"></div>
+                <input type="hidden" name="latitude" id="lat" required>
+                <input type="hidden" name="longitude" id="lng" required>
+            </div>
+
+            <div class="form-group">
+                <label class="main-label">4. Deskripsi Lengkap <span style="color:red;">*</span></label>
+                <textarea name="isi_laporan" class="form-control" placeholder="Ceritakan kronologi secara lengkap..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="main-label">5. Sifat Laporan <span style="color:red;">*</span></label>
+                <select name="privasi" class="form-control" required>
+                    <option value="publik"> Publik (Semua warga dapat melihat laporan ini)</option>
+                    <option value="privat"> Privat (Hanya Admin yang dapat mengakses laporan ini)</option>
+                </select>
+            </div>
+
+            <div class="checkbox-area">
+                <input type="checkbox" id="anonim" name="anonim" value="1" style="width: 18px; height: 18px;">
+                <label for="anonim">Sembunyikan nama asli saya di halaman publik (Anonim)</label>
+            </div>
+
+            <button type="submit" name="kirim_pengaduan" class="btn-submit">Kirim Laporan Sekarang</button>
+        </form>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. PREVIEW & VALIDASI FOTO UPLOAD
+        // ==========================================
+        const inputFoto = document.getElementById('input-foto');
+        const uploadWrapper = document.getElementById('upload-wrapper');
+        const previewWrapper = document.getElementById('preview-wrapper');
+        const previewImage = document.getElementById('preview-image');
+        const btnHapusPreview = document.getElementById('btn-hapus-preview');
+
+        inputFoto.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+                const maxSize = 2048000; // 2MB dalam bytes
+
+                // 1. Validasi Tipe File (Mencegah upload PDF/Word dll)
+                if (!allowedTypes.includes(file.type)) {
+                    alert('Format foto ditolak! Harap unggah file berupa gambar (JPG, JPEG, atau PNG).');
+                    this.value = ""; // Kosongkan input
+                    return; // Hentikan proses
+                }
+
+                // 2. Validasi Ukuran File (Maksimal 2MB)
+                if (file.size > maxSize) {
+                    alert('Ukuran foto terlalu besar! Maksimal ukuran file adalah 2MB.');
+                    this.value = ""; // Kosongkan input
+                    return; // Hentikan proses
+                }
+
+                // Jika lolos validasi, tampilkan preview gambar
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    previewImage.src = event.target.result;
+                    uploadWrapper.style.display = 'none';
+                    previewWrapper.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
             }
-            
-            reader.readAsDataURL(file);
-        }
-    });
+        });
 
-    // 2. Logika ketika user KLIK TOMBOL SILANG (Batal/Hapus Foto)
-    btnCancel.addEventListener('click', function(e) {
-        e.preventDefault(); // Mencegah form tersubmit tidak sengaja
-        e.stopPropagation(); // Mencegah trigger klik pada input file di belakangnya
+        btnHapusPreview.addEventListener('click', function() {
+            inputFoto.value = "";
+            previewImage.src = "#";
+            previewWrapper.style.display = 'none';
+            uploadWrapper.style.display = 'block';
+        });
 
-        fileInput.value = ""; // Mengosongkan kembali isi input file HTML (wajib required)
-        previewContainer.style.display = 'none'; // Sembunyikan gambar dan tombol silang
-        previewIcon.style.display = 'block'; // Memunculkan kembali ikon cloud semula
+        // ==========================================
+        // 2. LEAFLET MAPS & MODE LOKASI
+        // ==========================================
+        var latAwal = -7.250445; 
+        var lngAwal = 112.768845;
         
-        // Kembalikan teks instruksi asal
-        fileNameDisplay.innerHTML = `Ambil atau pilih foto kejadian terlebih dahulu.<br><small>Maksimal 2MB (JPG, JPEG, PNG)</small>`;
-    });
-</script>
+        var map = L.map('map').setView([latAwal, lngAwal], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+        
+        var marker = L.marker([latAwal, lngAwal], { draggable: true }).addTo(map);
+        document.getElementById('lat').value = latAwal;
+        document.getElementById('lng').value = lngAwal;
 
+        const mapStatus = document.getElementById('map-status');
+        const inputLokasi = document.getElementById('input-lokasi');
+        const searchResults = document.getElementById('search-results');
+        const radioModeLokasi = document.querySelectorAll('input[name="mode_lokasi"]');
+        let searchTimeout;
+
+        // Fungsi Reverse Geocoding (Titik ke Teks Alamat)
+        function getAddressFromCoords(lat, lng) {
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.display_name) {
+                        inputLokasi.value = data.display_name;
+                    }
+                })
+                .catch(err => console.log('Gagal mengambil nama jalan:', err));
+        }
+
+        // Fungsi Tarik Lokasi GPS
+        function detectUserLocation() {
+            mapStatus.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mendeteksi lokasi GPS...';
+            mapStatus.style.color = "#002855";
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var userLat = position.coords.latitude;
+                    var userLng = position.coords.longitude;
+                    
+                    map.setView([userLat, userLng], 17);
+                    marker.setLatLng([userLat, userLng]);
+                    
+                    document.getElementById('lat').value = userLat;
+                    document.getElementById('lng').value = userLng;
+                    
+                    mapStatus.innerHTML = '<i class="fa-solid fa-location-dot"></i> Lokasi GPS Anda berhasil ditemukan.';
+                    mapStatus.style.color = "#198754";
+                    
+                    getAddressFromCoords(userLat, userLng);
+                }, function(error) {
+                    mapStatus.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Gagal mendeteksi GPS. Silakan gunakan mode manual.';
+                    mapStatus.style.color = "#dc3545";
+                }, 
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 0
+                });
+            }
+        }
+
+        // Auto-detect saat web pertama dimuat
+        detectUserLocation();
+
+        // Ganti Mode Lokasi (Radio Button Event)
+        radioModeLokasi.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'gps') {
+                    // Mode GPS: Kunci input teks, sembunyikan dropdown, cari GPS lagi
+                    inputLokasi.readOnly = true;
+                    inputLokasi.placeholder = "Mencari alamat lokasi saat ini...";
+                    searchResults.style.display = 'none';
+                    detectUserLocation();
+                } else {
+                    // Mode Manual: Buka kunci input teks, izinkan pengetikan
+                    inputLokasi.readOnly = false;
+                    inputLokasi.placeholder = "Ketikkan nama jalan atau lokasi kejadian...";
+                    mapStatus.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>Silakan ketik alamat atau geser pin peta.';
+                    mapStatus.style.color = "#002855";
+                    inputLokasi.focus(); // Langsung arahkan kursor ke input
+                }
+            });
+        });
+
+        // Event saat pengguna menggeser pin merah secara manual
+        marker.on('dragstart', function() {
+            // Jika pin digeser, otomatis ubah mode ke "Manual"
+            document.querySelector('input[value="manual"]').checked = true;
+            inputLokasi.readOnly = false;
+            mapStatus.innerHTML = '<i class="fa-solid fa-map-pin"></i> Pin digeser secara manual.';
+            mapStatus.style.color = "#002855";
+        });
+
+        marker.on('dragend', function(e) {
+            const position = marker.getLatLng();
+            document.getElementById('lat').value = position.lat;
+            document.getElementById('lng').value = position.lng;
+            getAddressFromCoords(position.lat, position.lng);
+        });
+
+        // Fitur Autocomplete Pencarian Alamat saat user mengetik (Hanya di mode Manual)
+        inputLokasi.addEventListener('input', function() {
+            if (document.querySelector('input[name="mode_lokasi"]:checked').value === 'gps') {
+                return; // Jangan cari kalau mode GPS (seharusnya readonly, tapi sbg antisipasi)
+            }
+
+            clearTimeout(searchTimeout);
+            const query = this.value;
+
+            if (query.length < 3) {
+                searchResults.style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(() => {
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5&countrycodes=id`)
+                    .then(response => response.json())
+                    .then(data => {
+                        searchResults.innerHTML = '';
+                        if (data.length > 0) {
+                            searchResults.style.display = 'block';
+                            data.forEach(item => {
+                                const div = document.createElement('div');
+                                div.textContent = item.display_name;
+                                
+                                div.onclick = function() {
+                                    const lat = parseFloat(item.lat);
+                                    const lon = parseFloat(item.lon);
+                                    
+                                    map.setView([lat, lon], 17);
+                                    marker.setLatLng([lat, lon]);
+                                    
+                                    document.getElementById('lat').value = lat;
+                                    document.getElementById('lng').value = lon;
+                                    inputLokasi.value = item.display_name;
+                                    
+                                    searchResults.style.display = 'none';
+                                };
+                                searchResults.appendChild(div);
+                            });
+                        } else {
+                            searchResults.style.display = 'none';
+                        }
+                    });
+            }, 600); 
+        });
+
+        // Sembunyikan dropdown hasil pencarian jika klik di luar
+        document.addEventListener('click', function(e) {
+            if (e.target !== inputLokasi && e.target !== searchResults) {
+                searchResults.style.display = 'none';
+            }
+        });
+    </script>
 </body>
+</html>
