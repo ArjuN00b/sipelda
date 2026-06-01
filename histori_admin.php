@@ -30,7 +30,7 @@ $result = mysqli_query($koneksi, $query_sql);
 $total_data = mysqli_num_rows($result);
 
 // OPTIMASI: Fungsi Reusable untuk Icon (Menghindari penulisan if-else berulang dalam loop)
-function getIkonKategori($kategori) {
+function getIkonKategori(string $kategori): string {
     $kat = strtolower($kategori);
     $ikon_list = [
         'penerangan' => 'fa-lightbulb', 'pju' => 'fa-lightbulb', 'jalan' => 'fa-road',
@@ -54,7 +54,6 @@ function getIkonKategori($kategori) {
     <title>Arsip Pengaduan - SIPELDA Admin</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS Dioptimalkan */
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f7fb; margin: 0; display: flex; color: #333; }
         
         .sidebar { width: 260px; height: 100vh; background: #002855; color: white; padding: 30px 20px; position: fixed; left: 0; top: 0; box-sizing: border-box; display: flex; flex-direction: column; }
