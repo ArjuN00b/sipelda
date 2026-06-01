@@ -7,7 +7,6 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login' || $_SESSION[
     exit;
 }
 
-// OPTIMASI: Peringkas variabel GET menggunakan ??
 $search   = isset($_GET['search']) ? mysqli_real_escape_string($koneksi, $_GET['search']) : '';
 $status   = $_GET['status'] ?? '';
 $kategori = $_GET['kategori'] ?? '';
@@ -29,7 +28,6 @@ $query_sql .= " ORDER BY p.tgl_pengaduan DESC";
 $result = mysqli_query($koneksi, $query_sql);
 $total_data = mysqli_num_rows($result);
 
-// OPTIMASI: Fungsi Reusable untuk Icon (Menghindari penulisan if-else berulang dalam loop)
 function getIkonKategori(string $kategori): string {
     $kat = strtolower($kategori);
     $ikon_list = [
