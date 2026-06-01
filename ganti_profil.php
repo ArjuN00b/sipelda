@@ -9,7 +9,7 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login') {
 }
 $id_user = $_SESSION['id_user'];
 
-// 3. PROSES UPDATE DATA PROFIL & KATA SANDI
+// PROSES UPDATE DATA PROFIL & KATA SANDI
 if (isset($_POST['update_profil'])) {
     $nama_lengkap  = mysqli_real_escape_string($koneksi, $_POST['nama_lengkap']);
     $username_baru = mysqli_real_escape_string($koneksi, $_POST['username']);
