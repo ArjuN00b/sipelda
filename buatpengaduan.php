@@ -44,7 +44,7 @@ if (isset($_POST['kirim_pengaduan'])) {
     }
 
     $query = "INSERT INTO pengaduan (id_user, judul_laporan, isi_laporan, foto, status) 
-              VALUES ('$id_user', '$judul_laporan', '$isi_laporan_lengkap', '$nama_foto', 'menunggu')";
+                VALUES ('$id_user', '$judul_laporan', '$isi_laporan_lengkap', '$nama_foto', 'menunggu')";
 
     if (mysqli_query($koneksi, $query)) {
         echo "<script>alert('Laporan berhasil dikirim!'); window.location.href='historipengaduan.php';</script>";
@@ -63,7 +63,6 @@ if (isset($_POST['kirim_pengaduan'])) {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        /* CSS Disederhanakan & Rapi */
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f4f7fb; margin: 0; color: #333; }
         
         .navbar { background-color: #002855; color: white; padding: 25px 60px; display: flex; justify-content: space-between; align-items: center; }
@@ -90,14 +89,12 @@ if (isset($_POST['kirim_pengaduan'])) {
         .preview-area img { width: 100%; max-height: 400px; object-fit: contain; border-radius: 6px; display: block; }
         .btn-hapus-preview { position: absolute; top: 15px; right: 15px; background: #dc3545; color: white; border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         
-        /* CSS Pilihan Lokasi & Maps */
         .pilihan-lokasi { display: flex; gap: 20px; margin-bottom: 15px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
         .radio-lokasi { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 500; color: #334155; }
         .radio-lokasi input[type="radio"] { width: 18px; height: 18px; cursor: pointer; accent-color: #002855; }
         #map { height: 300px; width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #dcdcdc; z-index: 1; }
         .map-status { font-size: 13px; color: #198754; font-weight: bold; display: block; margin-bottom: 10px; }
         
-        /* CSS Autocomplete Search */
         .search-results { position: absolute; top: 48px; left: 0; right: 0; background: white; border: 1px solid #dcdcdc; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
         .search-results div { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 13px; }
         .search-results div:hover { background: #f4f7fb; color: #002855; }
@@ -247,7 +244,6 @@ if (isset($_POST['kirim_pengaduan'])) {
             document.getElementById('upload-wrapper').style.display = 'block';
         });
 
-        // --- 2. MAPS, RADIO BUTTON, & AUTOCOMPLETE ---
         const map = L.map('map').setView([-7.250445, 112.768845], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         const marker = L.marker([-7.250445, 112.768845], { draggable: true }).addTo(map);
@@ -365,7 +361,7 @@ if (isset($_POST['kirim_pengaduan'])) {
             }
         });
 
-        // --- 3. VALIDASI FORM INLINE ---
+        //  3. VALIDASI 
         const valKategori = document.getElementById('input-kategori');
         const valDeskripsi = document.getElementById('input-deskripsi');
 
