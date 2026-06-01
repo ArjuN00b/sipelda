@@ -17,7 +17,7 @@ if (isset($_POST['update_profil'])) {
 
     // Cek username bentrok
     if (mysqli_num_rows(mysqli_query($koneksi, "SELECT id_user FROM users WHERE username='$username_baru' AND id_user != '$id_user'")) > 0) {
-        echo "<script>alert('Username sudah digunakan! Pilih yang lain.');</script>";
+        echo "<script> alert('Username sudah digunakan! Pilih yang lain.');</script>";
     } else {
         // Jika password diubah
         if (!empty($_POST['password_baru'])) {
@@ -213,4 +213,4 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
         });
     </script>
 </body>
-</html>
+</html> 
