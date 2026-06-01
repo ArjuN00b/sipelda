@@ -9,7 +9,6 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login') {
 
 $id_user = $_SESSION['id_user'];
 
-// Fungsi kecil untuk menghapus foto lama agar kode tidak berulang
 function hapusFotoLama($koneksi, $id_user) {
     $q_user = mysqli_query($koneksi, "SELECT foto_profil FROM users WHERE id_user = '$id_user'");
     $user_lama = mysqli_fetch_assoc($q_user);
@@ -60,7 +59,6 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
     <title>Profil Saya - SIPELDA</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS Disederhanakan & Digabung */
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background-color: #f4f7fb; }
         a { text-decoration: none; }
         
