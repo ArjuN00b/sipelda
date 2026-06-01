@@ -8,11 +8,11 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login' || $_SESSION[
     exit;
 }
 
-// LOGIKA HAPUS PENGADUAN (Dioptimalkan)
+// Hapus Laporan
 if (isset($_GET['hapus_id'])) {
     $id_hapus = mysqli_real_escape_string($koneksi, $_GET['hapus_id']);
 
-    // Ambil data foto lalu hapus filenya jika ada
+    // Hapus file gambar jika ada
     $q_foto = mysqli_query($koneksi, "SELECT foto FROM pengaduan WHERE id_pengaduan = '$id_hapus'");
     if ($data_foto = mysqli_fetch_assoc($q_foto)) {
         if (!empty($data_foto['foto']) && file_exists('uploads/' . $data_foto['foto'])) {
@@ -28,7 +28,6 @@ if (isset($_GET['hapus_id'])) {
     exit;
 }
 
-// OPTIMASI: Hitung semua statistik dalam 1 Query (Bukan 4 Query terpisah)
 $q_stats = mysqli_fetch_assoc(mysqli_query($koneksi, "
     SELECT 
         COUNT(*) AS total,
@@ -43,7 +42,7 @@ $query = "SELECT p.*, u.nama_lengkap, u.username FROM pengaduan p JOIN users u O
 $result = mysqli_query($koneksi, $query);
 
 // OPTIMASI: Fungsi Reusable untuk Icon (Menghindari penulisan if-else berulang dalam loop)
-function getIkonKategori($kategori) {
+function getIkonKategori(string $kategori): string {
     $kat = strtolower($kategori);
     $ikon_list = [
         'penerangan' => 'fa-lightbulb', 'pju' => 'fa-lightbulb', 'jalan' => 'fa-road',
