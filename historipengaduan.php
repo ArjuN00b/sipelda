@@ -8,7 +8,7 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login' || $_SESSION[
 }
 $id_user_login = $_SESSION['id_user'];
 
-// Ambil foto profil (Dioptimalkan)
+// Ambil foto profil
 $foto_profil_nav = "";
 $q_nav = mysqli_query($koneksi, "SELECT foto_profil FROM users WHERE id_user = '$id_user_login'");
 if ($q_nav && mysqli_num_rows($q_nav) > 0) {
