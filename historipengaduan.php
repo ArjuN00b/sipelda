@@ -56,8 +56,7 @@ if (isset($_GET['detail'])) {
     "));
 }
 
-// OPTIMASI: Fungsi Reusable untuk Icon (Menghindari penulisan if-else berulang)
-function getIkonKategori($kategori) {
+function getIkonKategori(string $kategori): string {
     $kat = strtolower($kategori);
     $ikon_list = [
         'penerangan' => 'fa-lightbulb', 'pju' => 'fa-lightbulb', 'jalan' => 'fa-road',
