@@ -80,7 +80,7 @@ function getIkonKategori(string $kategori): string {
     <title>Riwayat - SIPELDA</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS Dioptimalkan */
+
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background-color: #f4f7fb; color: #333; }
         
         .navbar { background-color: #002855; color: white; padding: 25px 60px; display: flex; justify-content: space-between; align-items: center; }
