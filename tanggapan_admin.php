@@ -37,7 +37,7 @@ $data = mysqli_fetch_assoc(mysqli_query($koneksi, "
     WHERE p.id_pengaduan = '$id'
 "));
 
-// Parsing Konten Laporan (Dioptimalkan dengan Null Coalescing ??)
+// Parsing Konten Laporan (Dioptimalkan dengan Null Coalescing )
 $pecah_judul = explode(' - ', str_replace([' [ANONIM]', ' [PRIVAT]'], '', $data['judul_laporan']), 2);
 $kategori_murni = $pecah_judul[0];
 $lokasi_detail  = $pecah_judul[1] ?? '';
@@ -61,7 +61,7 @@ $daftar_ikon = [
 foreach ($daftar_ikon as $kata_kunci => $ikon) {
     if (strpos($kat_lower, $kata_kunci) !== false) {
         $icon_kat = $ikon;
-        break; // Hentikan pencarian jika sudah nemu ikon yang cocok
+        break;
     }
 }
 ?>
@@ -102,7 +102,6 @@ foreach ($daftar_ikon as $kata_kunci => $ikon) {
         .badge-diproses { background: #fef3c7; color: #d97706; }
         .badge-selesai { background: #dcfce3; color: #16a34a; }
         
-        /* Modal Image */
         .modal-img { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); align-items: center; justify-content: center; flex-direction: column; }
         .modal-content-img { max-width: 90%; max-height: 85vh; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .close-modal { color: #fff; font-size: 35px; font-weight: bold; position: absolute; top: 20px; right: 40px; cursor: pointer; transition: 0.2s; }
@@ -181,7 +180,6 @@ foreach ($daftar_ikon as $kata_kunci => $ikon) {
     </div>
 
     <script>
-        // JS Dioptimalkan untuk fitur Modal (Zoom Gambar)
         const modal = document.getElementById("imageModal");
         const closeModal = () => modal.style.display = "none";
 
