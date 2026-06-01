@@ -55,7 +55,7 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
     <title>Ubah Profil & Sandi - SIPELDA</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS identik dengan profil.php */
+        
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background-color: #f4f7fb; }
         a { text-decoration: none; }
 
@@ -213,4 +213,4 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
         });
     </script>
 </body>
-</html> 
+</html>
