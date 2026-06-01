@@ -47,40 +47,7 @@ if (isset($_POST['hapus_foto'])) {
     exit;
 }
 
-// 3. PROSES UPDATE DATA PROFIL & KATA SANDI
-if (isset($_POST['update_profil'])) {
-    $nama_lengkap  = mysqli_real_escape_string($koneksi, $_POST['nama_lengkap']);
-    $username_baru = mysqli_real_escape_string($koneksi, $_POST['username']);
-    $no_telp       = mysqli_real_escape_string($koneksi, $_POST['no_telp']);
 
-    // Cek username bentrok
-    if (mysqli_num_rows(mysqli_query($koneksi, "SELECT id_user FROM users WHERE username='$username_baru' AND id_user != '$id_user'")) > 0) {
-        echo "<script>alert('Username sudah digunakan! Pilih yang lain.');</script>";
-    } else {
-        // Jika password diubah
-        if (!empty($_POST['password_baru'])) {
-            $pass_lama = $_POST['password_lama'];
-            $pass_baru = password_hash($_POST['password_baru'], PASSWORD_DEFAULT);
-            $data_pass = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT password FROM users WHERE id_user='$id_user'"));
-
-            if (password_verify($pass_lama, $data_pass['password'])) {
-                mysqli_query($koneksi, "UPDATE users SET nama_lengkap='$nama_lengkap', username='$username_baru', no_telp='$no_telp', password='$pass_baru' WHERE id_user='$id_user'");
-                $_SESSION['username'] = $username_baru;
-                echo "<script>alert('Profil & Sandi berhasil diperbarui!'); window.location.href='profil.php';</script>";
-                exit;
-            } else {
-                echo "<script>alert('Gagal! Sandi lama salah.'); window.history.back();</script>";
-                exit;
-            }
-        } else {
-            // Update tanpa password
-            mysqli_query($koneksi, "UPDATE users SET nama_lengkap='$nama_lengkap', username='$username_baru', no_telp='$no_telp' WHERE id_user='$id_user'");
-            $_SESSION['username'] = $username_baru;
-            echo "<script>alert('Data profil berhasil disimpan!'); window.location.href='profil.php';</script>";
-            exit;
-        }
-    }
-}
 
 // Ambil data user saat ini
 $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_user = '$id_user'"));
@@ -198,56 +165,33 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
 
         <div class="main-content">
             <h2 class="main-title">Informasi Pribadi</h2>
-            <p class="sub-title">Perbarui informasi dasar, nama pengguna, dan sandi Anda di sini.</p>
+            <p class="sub-title">Informasi akun Anda.</p>
+            
+            <div class="form-group-full">
+            <label>Nama Lengkap</label>
+                <input type="text" class="form-control bg-gray" value="<?= htmlspecialchars($user['nama_lengkap'] ?? '') ?>" readonly>
+    </div>
 
-            <form method="POST" id="form-profil">
-                <div class="form-group-full">
-                    <label>Nama Lengkap</label>
-                    <input type="text" name="nama_lengkap" class="form-control" value="<?= htmlspecialchars($user['nama_lengkap'] ?? '') ?>" required>
-                </div>
+<div class="form-grid">
+    <div>
+        <label>Username</label>
+        <input type="text" class="form-control bg-gray" value="<?= htmlspecialchars($user['username'] ?? '') ?>" readonly>
+    </div>
+    <div>
+        <label>Nomor WhatsApp</label>
+        <input type="text" class="form-control bg-gray" value="<?= htmlspecialchars($user['no_telp'] ?? '') ?>" readonly>
+    </div>
+</div>
 
-                <div class="form-grid">
-                    <div>
-                        <label>Username</label>
-                        <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($user['username'] ?? '') ?>" required>
-                    </div>
-                    <div>
-                        <label>Nomor WhatsApp</label>
-                        <input type="text" name="no_telp" class="form-control" value="<?= htmlspecialchars($user['no_telp'] ?? '') ?>" required>
-                    </div>
-                </div>
-
-                <div class="password-box">
-                    <h4><i class="fa-solid fa-shield-halved"></i> Pengaturan Sandi</h4>
-                    <div class="form-grid">
-                        <div>
-                            <label>Kata Sandi Lama</label>
-                            <div class="password-container">
-                                <input type="password" name="password_lama" id="pass-lama" class="form-control bg-gray" placeholder="Ketik sandi saat ini">
-                                <i class="fa-solid fa-eye toggle-eye" onclick="togglePass('pass-lama', this)"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <label>Kata Sandi Baru</label>
-                            <div class="password-container">
-                                <input type="password" name="password_baru" id="pass-baru" class="form-control bg-gray" placeholder="Ketik sandi baru">
-                                <i class="fa-solid fa-eye toggle-eye" onclick="togglePass('pass-baru', this)"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="border-top: 1px solid #eee; padding-top: 20px; overflow: auto;">
-                    <button type="submit" name="update_profil" class="btn-save">
-                        <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan
-                    </button>
-                </div>
-            </form>
+<div style="border-top: 1px solid #eee; padding-top: 20px; overflow: auto;">
+    <button type="button" class="btn-save" onclick="window.location.href='ganti_profil.php'">
+        <i class="fa-solid fa-pen-to-square"></i> Ubah Profil & Sandi
+    </button>
+</div>
         </div>
     </div>
 
     <script>
-        // JS Disederhanakan
         const togglePass = (id, icon) => {
             const el = document.getElementById(id);
             el.type = el.type === 'password' ? 'text' : 'password';
