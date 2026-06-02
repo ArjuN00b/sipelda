@@ -117,7 +117,7 @@ if (isset($_POST['kirim_pengaduan'])) {
         </div>
         <div>
             <a href="profil.php" class="user-profile-btn">
-                <span>Halo, <?= htmlspecialchars($_SESSION['username'] ?? 'User'); ?></span>
+                <span><?= htmlspecialchars($_SESSION['username'] ?? 'User'); ?></span>
                 <?php if (!empty($foto_profil_nav) && file_exists('uploads/' . $foto_profil_nav)): ?>
                     <img src="uploads/<?= $foto_profil_nav ?>" class="nav-avatar">
                 <?php else: ?>
