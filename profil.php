@@ -9,11 +9,16 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login') {
 
 $id_user = $_SESSION['id_user'];
 
+// Fungsi Hapus Foto dengan Absolute Path
 function hapusFotoLama($koneksi, $id_user) {
     $q_user = mysqli_query($koneksi, "SELECT foto_profil FROM users WHERE id_user = '$id_user'");
     $user_lama = mysqli_fetch_assoc($q_user);
-    if (!empty($user_lama['foto_profil']) && file_exists('uploads/' . $user_lama['foto_profil'])) {
-        unlink('uploads/' . $user_lama['foto_profil']);
+    
+    if (!empty($user_lama['foto_profil'])) {
+        $target_file = __DIR__ . '/uploads/' . $user_lama['foto_profil'];
+        if (file_exists($target_file)) {
+            unlink($target_file);
+        }
     }
 }
 
@@ -25,14 +30,21 @@ if (isset($_FILES['foto_profil']) && $_FILES['foto_profil']['error'] == 0) {
     $file_tmp  = $_FILES['foto_profil']['tmp_name'];
 
     if (in_array($ekstensi, ['png', 'jpg', 'jpeg']) && $ukuran < 2048000) {
-        hapusFotoLama($koneksi, $id_user); // Panggil fungsi hapus
+        hapusFotoLama($koneksi, $id_user); 
         
         $nama_foto_baru = 'avatar_' . time() . '_' . preg_replace("/[^a-zA-Z0-9.]/", "", $nama_file);
-        move_uploaded_file($file_tmp, 'uploads/' . $nama_foto_baru);
+        $target_dir = __DIR__ . '/uploads/';
+        $target_file = $target_dir . $nama_foto_baru;
 
-        mysqli_query($koneksi, "UPDATE users SET foto_profil='$nama_foto_baru' WHERE id_user='$id_user'");
-        echo "<script>alert('Foto profil berhasil diperbarui!'); window.location.href='profil.php';</script>";
-        exit;
+        // Proses pindah file dengan error handling
+        if (move_uploaded_file($file_tmp, $target_file)) {
+            mysqli_query($koneksi, "UPDATE users SET foto_profil='$nama_foto_baru' WHERE id_user='$id_user'");
+            echo "<script>alert('Foto profil berhasil diperbarui!'); window.location.href='profil.php';</script>";
+            exit;
+        } else {
+            echo "<script>alert('Gagal memindahkan file. Cek permission folder uploads.'); window.history.back();</script>";
+            exit;
+        }
     } else {
         echo "<script>alert('Gagal! Pastikan format JPG/PNG dan ukuran maksimal 2MB.');</script>";
     }
@@ -45,8 +57,6 @@ if (isset($_POST['hapus_foto'])) {
     echo "<script>alert('Foto profil berhasil dihapus!'); window.location.href='profil.php';</script>";
     exit;
 }
-
-
 
 // Ambil data user saat ini
 $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_user = '$id_user'"));
@@ -94,7 +104,7 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
         
         .form-control { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; outline: none; font-size: 14px; }
         .form-control:focus { border-color: #002855; }
-        .bg-gray { background: #eef2f6; } /* Class untuk input password */
+        .bg-gray { background: #eef2f6; } 
         
         .password-container { position: relative; display: flex; align-items: center; }
         .password-container .form-control { padding-right: 45px; }
@@ -110,10 +120,40 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
             .form-grid { grid-template-columns: 1fr; gap: 15px; }
             .navbar { padding: 20px; flex-wrap: wrap; gap: 15px; justify-content: center; }
         }
+
+        /* --- CSS LOADING OVERLAY --- */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 40, 85, 0.85);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            backdrop-filter: blur(5px);
+        }
+        .loading-spinner { font-size: 60px; margin-bottom: 20px; animation: spin 1s linear infinite; }
+        .loading-text { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+        .loading-subtext { font-size: 14px; color: #cbd5e1; }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 
 <body>
+    <div class="loading-overlay" id="loading-overlay">
+        <i class="fa-solid fa-circle-notch loading-spinner"></i>
+        <div class="loading-text">Memperbarui Foto Profil...</div>
+        <div class="loading-subtext">Mohon tunggu sebentar.</div>
+    </div>
+
     <nav class="navbar">
         <a href="index.php" class="logo">SIPELDA</a>
         <div class="nav-center">
@@ -141,15 +181,15 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
             </div>
             <h3><?= htmlspecialchars($user['username'] ?? '') ?></h3>
 
-            <form method="POST" enctype="multipart/form-data">
-                <input type="file" name="foto_profil" id="file-avatar-input" accept="image/png, image/jpeg, image/jpg" style="display: none;" onchange="this.form.submit();">
+            <form method="POST" id="form-upload-foto" enctype="multipart/form-data">
+                <input type="file" name="foto_profil" id="file-avatar-input" accept="image/png, image/jpeg, image/jpg" style="display: none;" onchange="prosesUpload()">
                 <button type="button" class="btn-ganti-foto" onclick="document.getElementById('file-avatar-input').click()">
                     <i class="fa-solid fa-camera"></i> Ganti Foto Profil
                 </button>
             </form>
 
             <?php if (!empty($user['foto_profil'])): ?>
-                <form method="POST">
+                <form method="POST" id="form-hapus-foto" onsubmit="tampilkanLoading('Menghapus Foto Profil...')">
                     <button type="submit" name="hapus_foto" class="btn-hapus-foto" onclick="return confirm('Yakin ingin menghapus foto?')">
                         <i class="fa-solid fa-trash-can"></i> Hapus Foto
                     </button>
@@ -166,44 +206,46 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
             <p class="sub-title">Informasi akun Anda.</p>
             
             <div class="form-group-full">
-            <label>Nama Lengkap</label>
+                <label>Nama Lengkap</label>
                 <input type="text" class="form-control bg-gray" value="<?= htmlspecialchars($user['nama_lengkap'] ?? '') ?>" readonly>
-    </div>
+            </div>
 
-<div class="form-grid">
-    <div>
-        <label>Username</label>
-        <input type="text" class="form-control bg-gray" value="<?= htmlspecialchars($user['username'] ?? '') ?>" readonly>
-    </div>
-    <div>
-        <label>Nomor WhatsApp</label>
-        <input type="text" class="form-control bg-gray" value="<?= htmlspecialchars($user['no_telp'] ?? '') ?>" readonly>
-    </div>
-</div>
+            <div class="form-grid">
+                <div>
+                    <label>Username</label>
+                    <input type="text" class="form-control bg-gray" value="<?= htmlspecialchars($user['username'] ?? '') ?>" readonly>
+                </div>
+                <div>
+                    <label>Nomor WhatsApp</label>
+                    <input type="text" class="form-control bg-gray" value="<?= htmlspecialchars($user['no_telp'] ?? '') ?>" readonly>
+                </div>
+            </div>
 
-<div style="border-top: 1px solid #eee; padding-top: 20px; overflow: auto;">
-    <button type="button" class="btn-save" onclick="window.location.href='ganti_profil.php'">
-        <i class="fa-solid fa-pen-to-square"></i> Ubah Profil & Sandi
-    </button>
-</div>
+            <div style="border-top: 1px solid #eee; padding-top: 20px; overflow: auto;">
+                <button type="button" class="btn-save" onclick="window.location.href='ganti_profil.php'">
+                    <i class="fa-solid fa-pen-to-square"></i> Ubah Profil & Sandi
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        const togglePass = (id, icon) => {
-            const el = document.getElementById(id);
-            el.type = el.type === 'password' ? 'text' : 'password';
-            icon.classList.toggle('fa-eye');
-            icon.classList.toggle('fa-eye-slash');
-        };
-
-        document.getElementById('form-profil').addEventListener('submit', e => {
-            if (document.getElementById('pass-baru').value && !document.getElementById('pass-lama').value) {
-                e.preventDefault();
-                alert('Silakan masukkan Kata Sandi Lama Anda untuk mengonfirmasi!');
-                document.getElementById('pass-lama').focus();
+        // Memunculkan Loading Overlay saat input file dipilih dan langsung disubmit
+        function prosesUpload() {
+            const fileInput = document.getElementById('file-avatar-input');
+            if (fileInput.files.length > 0) {
+                tampilkanLoading('Memperbarui Foto Profil...');
+                document.getElementById('form-upload-foto').submit();
             }
-        });
+        }
+
+        // Fungsi untuk mengaktifkan Loading Overlay dengan teks dinamis
+        function tampilkanLoading(pesan) {
+            document.getElementById('loading-overlay').style.display = 'flex';
+            if (pesan) {
+                document.querySelector('.loading-text').innerText = pesan;
+            }
+        }
     </script>
 </body>
 </html>
