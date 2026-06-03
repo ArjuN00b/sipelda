@@ -35,12 +35,24 @@ if (isset($_POST['kirim_pengaduan'])) {
         $ekstensi  = strtolower(pathinfo($nama_file, PATHINFO_EXTENSION));
 
         if (in_array($ekstensi, ['png', 'jpg', 'jpeg']) && $_FILES['foto']['size'] < 2048000) { 
-            $nama_foto = time() . '_img_' . preg_replace("/[^a-zA-Z0-9.]/", "", $nama_file);
-            move_uploaded_file($_FILES['foto']['tmp_name'], 'uploads/' . $nama_foto);
+        $nama_foto = time() . '_img_' . preg_replace("/[^a-zA-Z0-9.]/", "", $nama_file);
+        
+        // Gunakan absolute path agar akurat di hosting
+        $target_dir = __DIR__ . '/uploads/'; 
+        $target_file = $target_dir . $nama_foto;
+
+        // Proses pindah file
+        if(move_uploaded_file($_FILES['foto']['tmp_name'], $target_file)) {
+            // Berhasil upload
         } else {
-            echo "<script>alert('Gagal! Format foto tidak valid atau ukuran lebih dari 2MB.'); window.history.back();</script>";
+            // Debugging error jika folder tidak bisa diakses
+            echo "<script>alert('Gagal memindahkan file. Cek permission folder uploads.'); window.history.back();</script>";
             exit;
         }
+    } else {
+        echo "<script>alert('Gagal! Format foto tidak valid atau ukuran lebih dari 2MB.'); window.history.back();</script>";
+        exit;
+    }
     }
 
     $query = "INSERT INTO pengaduan (id_user, judul_laporan, isi_laporan, foto, status) 
@@ -105,10 +117,51 @@ if (isset($_POST['kirim_pengaduan'])) {
         .btn-submit:hover { background: #001a38; }
         
         .error-msg { color: #dc3545; font-size: 13px; margin-top: 8px; display: none; font-weight: 500; }
+
+        /* --- CSS LOADING OVERLAY --- */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 40, 85, 0.85); /* Warna biru gelap transparan */
+            z-index: 9999;
+            display: none; /* Tersembunyi secara default */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            backdrop-filter: blur(5px);
+        }
+        .loading-spinner {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: spin 1s linear infinite;
+        }
+        .loading-text {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .loading-subtext {
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 
 <body>
+    <div class="loading-overlay" id="loading-overlay">
+        <i class="fa-solid fa-circle-notch loading-spinner"></i>
+        <div class="loading-text">Sedang Mengunggah Laporan...</div>
+        <div class="loading-subtext">Mohon tunggu sebentar, jangan tutup atau refresh halaman ini.</div>
+    </div>
+
     <nav class="navbar">
         <a href="index.php" class="logo">SIPELDA</a>
         <div class="nav-center">
@@ -211,7 +264,7 @@ if (isset($_POST['kirim_pengaduan'])) {
                 <label for="anonim">Sembunyikan nama asli saya di halaman publik (Anonim)</label>
             </div>
 
-            <button type="submit" name="kirim_pengaduan" class="btn-submit">Kirim Laporan Sekarang</button>
+            <button type="submit" name="kirim_pengaduan" id="btn-submit" class="btn-submit">Kirim Laporan Sekarang</button>
         </form>
     </div>
 
@@ -361,7 +414,7 @@ if (isset($_POST['kirim_pengaduan'])) {
             }
         });
 
-        //  3. VALIDASI 
+        //  3. VALIDASI DAN JAVASCRIPT LOADING OVERLAY 
         const valKategori = document.getElementById('input-kategori');
         const valDeskripsi = document.getElementById('input-deskripsi');
 
@@ -381,6 +434,16 @@ if (isset($_POST['kirim_pengaduan'])) {
             if (!isValid) {
                 e.preventDefault();
                 if (inputFoto.files.length === 0) window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                
+                // 1. Tampilkan overlay transparan layar penuh
+                document.getElementById('loading-overlay').style.display = 'flex';
+                
+                // 2. Ubah UI pada tombol Submit agar tidak bisa diklik berulang kali
+                const btnSubmit = document.getElementById('btn-submit');
+                btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Memproses Laporan...';
+                btnSubmit.style.pointerEvents = 'none';
+                btnSubmit.style.opacity = '0.7';
             }
         });
     </script>
