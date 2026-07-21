@@ -8,15 +8,12 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login' || $_SESSION[
 }
 
 $search        = isset($_GET['search']) ? mysqli_real_escape_string($koneksi, trim($_GET['search'])) : '';
-$filter_status = isset($_GET['status']) ? mysqli_real_escape_string($koneksi, $_GET['status']) : '';
 $filter_kat    = isset($_GET['kategori']) ? mysqli_real_escape_string($koneksi, $_GET['kategori']) : '';
 
-$where_clause = " WHERE 1=1";
+// Histori Admin HANYA menampilkan laporan yang statusnya selesai
+$where_clause = " WHERE p.status = 'selesai'";
 if ($search != '') {
     $where_clause .= " AND (p.judul_laporan LIKE '%$search%' OR p.isi_laporan LIKE '%$search%' OR u.nama_lengkap LIKE '%$search%')";
-}
-if ($filter_status != '' && $filter_status != 'semua') {
-    $where_clause .= " AND p.status = '$filter_status'";
 }
 if ($filter_kat != '' && $filter_kat != 'semua') {
     $where_clause .= " AND p.judul_laporan LIKE '$filter_kat%'";
@@ -247,13 +244,6 @@ function getIkonKategori(string $kategori): string {
                 <input type="text" name="search" id="live-search" placeholder="Cari nama pelapor, tiket, deskripsi..." value="<?= htmlspecialchars($search); ?>" autocomplete="off">
             </div>
 
-            <select name="status" class="filter-select" onchange="this.form.submit()">
-                <option value="semua" <?= ($filter_status == 'semua' || $filter_status == '') ? 'selected' : ''; ?>>Semua Status</option>
-                <option value="menunggu" <?= ($filter_status == 'menunggu') ? 'selected' : ''; ?>>🔴 Menunggu</option>
-                <option value="diproses" <?= ($filter_status == 'diproses') ? 'selected' : ''; ?>>🟡 Diproses</option>
-                <option value="selesai" <?= ($filter_status == 'selesai') ? 'selected' : ''; ?>>🟢 Selesai</option>
-            </select>
-
             <select name="kategori" class="filter-select" onchange="this.form.submit()">
                 <option value="semua" <?= ($filter_kat == 'semua' || $filter_kat == '') ? 'selected' : ''; ?>>Semua Kategori</option>
                 <?php 
@@ -283,7 +273,6 @@ function getIkonKategori(string $kategori): string {
                         <th>Kategori & Lokasi</th>
                         <th>Status</th>
                         <th>Tanggapan Resmi</th>
-                        <th>Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -326,13 +315,10 @@ function getIkonKategori(string $kategori): string {
                                         <?= $row['isi_tanggapan'] ? htmlspecialchars($row['isi_tanggapan']) : '<span style="color:#cbd5e1; font-style:italic;">Belum ada tanggapan</span>'; ?>
                                     </div>
                                 </td>
-                                <td>
-                                    <a href="tanggapan_admin.php?id=<?= $row['id_pengaduan']; ?>" class="btn-lihat"><i class="fa-solid fa-reply"></i> Rincian & Kelola</a>
-                                </td>
                             </tr>
                         <?php endwhile;
                     else: ?>
-                        <tr><td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">Data arsip pengaduan tidak ditemukan.</td></tr>
+                        <tr><td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">Data arsip pengaduan tidak ditemukan.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -345,7 +331,7 @@ function getIkonKategori(string $kategori): string {
         <?php if ($total_pages > 1): ?>
             <div class="pagination-container">
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <a href="histori_admin.php?page=<?= $i ?>&search=<?= urlencode($search) ?>&status=<?= urlencode($filter_status) ?>&kategori=<?= urlencode($filter_kat) ?>" class="page-link <?= $page == $i ? 'active' : '' ?>"><?= $i ?></a>
+                    <a href="histori_admin.php?page=<?= $i ?>&search=<?= urlencode($search) ?>&kategori=<?= urlencode($filter_kat) ?>" class="page-link <?= $page == $i ? 'active' : '' ?>"><?= $i ?></a>
                 <?php endfor; ?>
             </div>
         <?php endif; ?>

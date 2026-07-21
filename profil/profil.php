@@ -8,56 +8,6 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login') {
 }
 
 $id_user = $_SESSION['id_user'];
-$profil_sukses = false;
-$pesan_sukses = "";
-
-// Fungsi Hapus Foto dengan Absolute Path
-function hapusFotoLama($koneksi, $id_user) {
-    $q_user = mysqli_query($koneksi, "SELECT foto_profil FROM users WHERE id_user = '$id_user'");
-    $user_lama = mysqli_fetch_assoc($q_user);
-    
-    if (!empty($user_lama['foto_profil'])) {
-        $target_file = dirname(__DIR__) . '/uploads/' . $user_lama['foto_profil'];
-        if (file_exists($target_file)) {
-            unlink($target_file);
-        }
-    }
-}
-
-// 1. PROSES UPLOAD FOTO
-if (isset($_FILES['foto_profil']) && $_FILES['foto_profil']['error'] == 0) {
-    $nama_file = $_FILES['foto_profil']['name'];
-    $ekstensi  = strtolower(pathinfo($nama_file, PATHINFO_EXTENSION));
-    $ukuran    = $_FILES['foto_profil']['size'];
-    $file_tmp  = $_FILES['foto_profil']['tmp_name'];
-
-    if (in_array($ekstensi, ['png', 'jpg', 'jpeg', 'webp']) && $ukuran <= 10485760) {
-        hapusFotoLama($koneksi, $id_user); 
-        
-        $nama_foto_baru = 'avatar_' . time() . '_' . preg_replace("/[^a-zA-Z0-9.]/", "", $nama_file);
-        $target_file = dirname(__DIR__) . '/uploads/' . $nama_foto_baru;
-
-        if (move_uploaded_file($file_tmp, $target_file)) {
-            mysqli_query($koneksi, "UPDATE users SET foto_profil='$nama_foto_baru' WHERE id_user='$id_user'");
-            $profil_sukses = true;
-            $pesan_sukses = "Foto profil Anda berhasil diperbarui!";
-        } else {
-            echo "<script>alert('Gagal memindahkan file avatar.'); window.history.back();</script>";
-            exit;
-        }
-    } else {
-        echo "<script>alert('Hanya diperbolehkan format Foto (PNG, JPG, JPEG, WEBP) maksimal 10MB!'); window.history.back();</script>";
-        exit;
-    }
-}
-
-// 2. PROSES HAPUS FOTO
-if (isset($_POST['hapus_foto'])) {
-    hapusFotoLama($koneksi, $id_user);
-    mysqli_query($koneksi, "UPDATE users SET foto_profil = NULL WHERE id_user = '$id_user'");
-    $profil_sukses = true;
-    $pesan_sukses = "Foto profil Anda berhasil dihapus!";
-}
 
 // Ambil data user saat ini
 $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_user = '$id_user'"));
@@ -275,18 +225,6 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
 </head>
 <body>
 
-    <!-- MODAL SUKSES IN-APP -->
-    <?php if ($profil_sukses): ?>
-        <div class="modal-overlay">
-            <div class="modal-box">
-                <div class="modal-icon-success"><i class="fa-solid fa-circle-check"></i></div>
-                <h3>Berhasil!</h3>
-                <p><?= $pesan_sukses ?></p>
-                <a href="profil.php" class="btn-modal-close">OK</a>
-            </div>
-        </div>
-    <?php endif; ?>
-
     <!-- MODAL LIGHTBOX ZOOM FOTO -->
     <div id="image-lightbox-modal" class="lightbox-overlay" onclick="closeLightbox(event)">
         <span class="lightbox-close" onclick="closeLightboxDirect()">&times;</span>
@@ -304,27 +242,6 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
                 <a href="../auth/logout.php" class="btn-modal-logout-ya">Ya, Keluar Akun</a>
             </div>
         </div>
-    </div>
-
-    <!-- MODAL KONFIRMASI HAPUS FOTO -->
-    <div id="modal-confirm-hapus-foto" class="modal-overlay" style="display: none;">
-        <div class="modal-box">
-            <div class="modal-icon-logout"><i class="fa-solid fa-trash-can"></i></div>
-            <h3>Hapus Foto Profil?</h3>
-            <p>Foto profil Anda saat ini akan dihapus permanen dari sistem.</p>
-            <div class="modal-button-group">
-                <button type="button" class="btn-modal-cancel" onclick="closeConfirmHapusFoto()">Batal</button>
-                <form method="POST" action="" style="flex:1;">
-                    <button type="submit" name="hapus_foto" class="btn-modal-logout-ya" style="width:100%; border:none; cursor:pointer;">Ya, Hapus</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="loading-overlay" id="loading-overlay">
-        <i class="fa-solid fa-circle-notch loading-spinner"></i>
-        <div class="loading-text">Memperbarui Foto Profil...</div>
-        <div class="loading-subtext">Mohon tunggu sebentar.</div>
     </div>
 
     <!-- HEADER SIPELDA TENGAH -->
@@ -345,19 +262,6 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
                 <?php endif; ?>
             </div>
             <h3><?= htmlspecialchars($user['username'] ?? '') ?></h3>
-
-            <form method="POST" id="form-upload-foto" enctype="multipart/form-data">
-                <input type="file" name="foto_profil" id="file-avatar-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;" onchange="prosesUpload()">
-                <button type="button" class="btn-ganti-foto" onclick="document.getElementById('file-avatar-input').click()">
-                    <i class="fa-solid fa-camera"></i> Ganti Foto Profil
-                </button>
-            </form>
-
-            <?php if (!empty($user['foto_profil'])): ?>
-                <button type="button" class="btn-hapus-foto" onclick="openConfirmHapusFoto()">
-                    <i class="fa-solid fa-trash-can"></i> Hapus Foto
-                </button>
-            <?php endif; ?>
 
             <button type="button" class="btn-logout-merah" onclick="openConfirmLogout()">
                 <i class="fa-solid fa-right-from-bracket"></i> Keluar dari Akun
@@ -409,33 +313,11 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
     </nav>
 
     <script>
-        function prosesUpload() {
-            const fileInput = document.getElementById('file-avatar-input');
-            if (fileInput.files.length > 0) {
-                tampilkanLoading('Memperbarui Foto Profil...');
-                document.getElementById('form-upload-foto').submit();
-            }
-        }
-
-        function tampilkanLoading(pesan) {
-            document.getElementById('loading-overlay').style.display = 'flex';
-            if (pesan) {
-                document.querySelector('.loading-text').innerText = pesan;
-            }
-        }
-
         function openConfirmLogout() {
             document.getElementById('modal-confirm-logout').style.display = 'flex';
         }
         function closeConfirmLogout() {
             document.getElementById('modal-confirm-logout').style.display = 'none';
-        }
-
-        function openConfirmHapusFoto() {
-            document.getElementById('modal-confirm-hapus-foto').style.display = 'flex';
-        }
-        function closeConfirmHapusFoto() {
-            document.getElementById('modal-confirm-hapus-foto').style.display = 'none';
         }
 
         function zoomFoto(element) {
