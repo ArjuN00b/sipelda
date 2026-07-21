@@ -417,9 +417,6 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
                 </button>
             <?php endif; ?>
 
-            <a href="profil.php" class="btn-kembali" style="margin-bottom:0;">
-                <i class="fa-solid fa-arrow-left"></i> Kembali ke Profil
-            </a>
         </div>
 
         <div class="main-content">
