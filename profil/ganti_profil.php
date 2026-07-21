@@ -460,10 +460,7 @@ $user = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM users WHERE id_
                     </div>
                 </div>
 
-                <div style="border-top: 1px solid #eee; padding-top: 20px; display: flex; justify-content: flex-end; gap: 12px; align-items: center;">
-                    <button type="button" class="btn-logout-merah" onclick="openConfirmLogout()" style="width: auto; margin-top: 0; padding: 14px 24px;">
-                        <i class="fa-solid fa-right-from-bracket"></i> Keluar dari Akun
-                    </button>
+                <div style="border-top: 1px solid #eee; padding-top: 20px; display: flex; justify-content: flex-end; align-items: center;">
                     <button type="submit" name="update_profil" class="btn-save">
                         <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan
                     </button>
